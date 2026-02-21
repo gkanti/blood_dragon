@@ -8,8 +8,8 @@ use std::{sync::Mutex};
 lazy_static! {
   static ref BTN_HANDLER: Mutex<ButtonHandler> = Mutex::new(ButtonHandler::new());
 }
-pub const BTN_1:     u8 = 0;
-pub const BTN_2:     u8 = 1;
+pub const BTN_X:     u8 = 0;
+pub const BTN_Z:     u8 = 1;
 pub const BTN_LEFT:  u8 = 4;
 pub const BTN_RIGHT: u8 = 5;
 pub const BTN_UP:    u8 = 6;
@@ -135,7 +135,10 @@ impl Timeline {
       if self.now_idx >= self.max_idx { self.now_idx = 0; }
     }
   }
-  pub fn draw(&self, x: i32, y: i32, flags: u32) {
+  pub fn draw(&self, x: i32, y: i32) {
+    self.images[self.now_idx as usize].draw(x, y);
+  }
+  pub fn drawf(&self, x: i32, y: i32, flags: u32) {
     self.images[self.now_idx as usize].drawf(x, y, flags);
   }
   pub fn reset(&mut self) {
@@ -146,10 +149,17 @@ impl Timeline {
 }
 
 // -------------------------------
-// Collision
+// Text
 // -------------------------------
-
-
+pub fn text_center_x<T: AsRef<[u8]>>(msg: T, y: i32) {
+  let msg_ref = msg.as_ref();
+  let x = ((160 - (msg_ref.len()*8)) / 2) as i32;
+  text(msg, x, y);
+}
+pub fn text_center_y<T: AsRef<[u8]>>(msg: T, x: i32) {
+  let y = 160 - (8 / 2);
+  text(msg, x, y);
+}
 // -------------------------------
 // Color
 // -------------------------------
@@ -177,4 +187,20 @@ impl Vec2i {
   }
 }
 
-
+pub struct Clock {
+  wait_frame: u16,
+  now_frame: u16,
+}
+impl Clock {
+  pub fn new(wait_frame: u16) -> Self {
+    Self { wait_frame, now_frame: 0 }
+  }
+  pub fn tick(&mut self) {
+    if self.now_frame >= self.wait_frame { return }
+    self.now_frame += 1;
+  }
+  pub fn is_time_out(&self) -> bool { return self.now_frame >= self.wait_frame }
+  pub fn reset(&mut self) {
+    self.now_frame = 0;
+  }
+}

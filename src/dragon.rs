@@ -9,6 +9,8 @@ const JUMP_POWER: i16 = -4;
 const MAX_FALL_SPD_Y: i16 = 4;
 const FUNBARI_TIME: u8 = 60;
 const INV_TIME: u8 = 90;
+const SPRING_FORCE_X: i16 = 12;
+const SPRING_FORCE_Y: i16 = 18;
 
 #[derive(Copy, Clone, PartialEq)]
 enum State {
@@ -17,15 +19,18 @@ enum State {
   Jump,
   Fly,
   Fall,
+  Death,
 }
 pub struct Dragon {
-  anim: [Timeline; 5],
+  anim: [Timeline; 6],
   pub pos: Vec2i,
   vel: Vec2i,
+  pub force: Vec2i,
   pub hp: u8,
   
   now_state: State,
   old_state: State,
+  evt_death_clock: Clock,
   move_frames: u8,
   jump_frames: u8,
   fly_frames: u8,
@@ -33,6 +38,8 @@ pub struct Dragon {
 
   is_jump: bool,
   is_inv: bool,
+  pub is_death: bool,
+
   on_ground: bool,
   xflip: bool,
   yflip: bool,
@@ -41,12 +48,7 @@ pub struct Dragon {
 
 fn is_solid_tile(tile: Option<&Tile>) -> bool {
   if let Some(t) = tile {
-    matches!(t.id, TileId::Wall | TileId::NeedleDown | TileId::NeedleLeft | TileId::NeedleRight | TileId::NeedleUp)
-  } else { false }
-}
-fn is_needle_tile(tile: Option<&Tile>) -> bool {
-  if let Some(t) = tile {
-    matches!(t.id, TileId::NeedleDown | TileId::NeedleLeft | TileId::NeedleRight | TileId::NeedleUp)
+    matches!(t.id, TileId::Wall | TileId::SpringVert | TileId::SpringHori | TileId::NeedleDown | TileId::NeedleLeft | TileId::NeedleRight | TileId::NeedleUp)
   } else { false }
 }
 
@@ -54,14 +56,19 @@ impl Dragon {
   pub fn reset(&mut self, x: i16, y: i16) {
     self.pos.x = x;
     self.pos.y = y;
+    self.vel = Vec2i::zero();
+    self.force = Vec2i::zero();
+    self.hp = 6;
     self.now_state = State::Idle;
     self.old_state = State::Idle;
+    self.evt_death_clock.reset();
     self.move_frames = 0;
     self.jump_frames = 0;
     self.fly_frames = 0;
     self.inv_frames = 0;
     self.is_jump = false;
     self.is_inv = false;
+    self.is_death = false;
     self.on_ground = true;
     self.xflip = false;
     self.yflip = false;
@@ -74,14 +81,30 @@ impl Dragon {
       Timeline::new(ANIM_DRAGON_JUMP, [255].to_vec()),
       Timeline::new(ANIM_DRAGON_FLY,  [4, 4].to_vec()),
       Timeline::new(ANIM_DRAGON_FALL, [255].to_vec()),
+      Timeline::new(ANIM_DRAGON_DEATH, [6, 6, 6, 6].to_vec())
       ],
-      pos: Vec2i::zero(), vel: Vec2i::zero(), hp: 6,
-      now_state: State::Idle, old_state: State::Idle,
+      pos: Vec2i::zero(), vel: Vec2i::zero(), force: Vec2i::zero(), hp: 6,
+      now_state: State::Idle, old_state: State::Idle, evt_death_clock: Clock::new(80),
       move_frames: 0, jump_frames: 0, fly_frames: 0, inv_frames: 0,
-      is_jump: false, is_inv: false, on_ground: true, xflip: false, yflip: false, rot: false
+      is_jump: false, is_inv: false, is_death: false, on_ground: true, xflip: false, yflip: false, rot: false
     }
   }
-
+  fn check_damage(&mut self, tile1: Option<&Tile>, tile2: Option<&Tile>, id: TileId) {
+    let mut damaged = false;
+    if !self.is_inv {
+      // 針の方向によってダメージが通るか判定
+      if let Some(t) = tile1 { if t.id == id { damaged = true } }
+      if let Some(t) = tile2 { if t.id == id { damaged = true } }
+      if damaged {
+        self.hp -= 1;
+        if self.hp <= 0 {
+          self.is_death = true;
+          self.force.y -= 12;
+        }
+        else { self.is_inv = true; }
+      }
+    }
+  }
   pub fn check_interactive(&mut self, tl: Option<&Tile>, tr: Option<&Tile>, bl: Option<&Tile>, br: Option<&Tile>) -> [Option<InteractiveCmd>; 4] {
     // クロージャを使ってみたかっただけ
     let get_cmd = |t: Option<&Tile>| -> Option<InteractiveCmd> {
@@ -99,100 +122,97 @@ impl Dragon {
 
   }
   pub fn check_collision_x(&mut self, tl: Option<&Tile>, tr: Option<&Tile>, bl: Option<&Tile>, br: Option<&Tile>) {
-    // 移動していなかったらNOP
-    if self.vel.x == 0 { return }
-    
     // 左移動時
-    if self.vel.x < 0 {
-
-      if is_solid_tile(tl) || is_solid_tile(bl) {
-        // ダメージ判定
-        if (is_needle_tile(tl) || is_needle_tile(bl)) && !self.is_inv {
-          self.hp -= 1;
-          self.is_inv = true;
-        }
-        // 壁判定
-        let tile = tl.unwrap();
-        let tile_right = tile.pos.x + DRAGON_WIDTH;
-        if self.pos.x < tile_right {
-          self.pos.x = tile_right;
-          self.vel.x = 0;
-        }
+    // ダメージ判定
+    self.check_damage(tl, bl, TileId::NeedleRight);
+    // 壁となるタイルかどうか判定
+    if is_solid_tile(tl) || is_solid_tile(bl) {
+      // 壁判定
+      let tile = tl.unwrap(); // 壁の右端の座標を知りたいだけなのでtl, blどちらでもいい
+      let tile_right = tile.pos.x + DRAGON_WIDTH;
+      if self.pos.x < tile_right {
+        self.pos.x = tile_right;
+        self.vel.x = 0;
       }
-
     }
+    // ばね判定
+    let mut bounced = false;
+    if let Some(t) = tl { if t.id == TileId::SpringHori { bounced = true } }
+    if let Some(t) = bl { if t.id == TileId::SpringHori { bounced = true } }
+    if bounced { self.force.x = SPRING_FORCE_X }
+
     // 右移動時
-    else if self.vel.x > 0 {
-
-      if is_solid_tile(tr) || is_solid_tile(br) {
-        // ダメージ判定
-        if (is_needle_tile(tr) || is_needle_tile(br)) && !self.is_inv {
-          self.hp -= 1;
-          self.is_inv = true;
-        }
-        // 壁判定
-        let tile = tr.unwrap();
-        let tile_left = tile.pos.x;
-        if self.pos.x + DRAGON_WIDTH > tile_left {
-          self.pos.x = tile_left - DRAGON_WIDTH;
-          self.vel.x = 0;
-        }
+    // ダメージ判定
+    self.check_damage(tr, br, TileId::NeedleLeft);
+    // 壁判定
+    if is_solid_tile(tr) || is_solid_tile(br) {
+      let tile = tr.unwrap();
+      let tile_left = tile.pos.x;
+      if self.pos.x + DRAGON_WIDTH > tile_left {
+        self.pos.x = tile_left - DRAGON_WIDTH;
+        self.vel.x = 0;
       }
-
     }
+    // ばね判定
+    let mut bounced = false;
+    if let Some(t) = tr { if t.id == TileId::SpringHori { bounced = true } }
+    if let Some(t) = br { if t.id == TileId::SpringHori { bounced = true } }
+    if bounced { self.force.x = -SPRING_FORCE_X }
+
+
 
   }
   pub fn check_collision_y(&mut self, tl: Option<&Tile>, tr: Option<&Tile>, bl: Option<&Tile>, br: Option<&Tile>) {
-    // 移動していなかったらNOP
-    if self.vel.y == 0 { return }
-
     // 落下時
-    if self.vel.y > 0 {
 
-      if is_solid_tile(bl) || is_solid_tile(br) {
-        // ダメージ処理
-        if (is_needle_tile(bl) || is_needle_tile(br)) && !self.is_inv {
-          self.hp -= 1;
-          self.is_inv = true;
-        }
-        // 壁判定
-        let tile = bl.unwrap();
-        let tile_top = tile.pos.y;
-        let dragon_btm = self.pos.y + DRAGON_HEIGHT;
-        if dragon_btm >= tile_top {
-          // 着地処理
-          self.pos.y = tile_top - DRAGON_HEIGHT;
-          self.vel.y = 0;
-          self.fly_frames = 0;
-          self.jump_frames = 0;
-          self.on_ground = true;
-        }
-      // 着地処理
-      } else { self.on_ground = false; }
+    // ダメージ判定
+    self.check_damage(bl, br, TileId::NeedleUp);
+    // ばね判定
+    let mut bounced = false;
+    if let Some(t) = bl { if t.id == TileId::SpringVert { bounced = true } }
+    if let Some(t) = br { if t.id == TileId::SpringVert { bounced = true } }
+    if bounced { self.force.y = -SPRING_FORCE_Y }
 
-    }
-    // 上昇時
-    else if self.vel.y < 0 {
-      
-      if is_solid_tile(tl) || is_solid_tile(tr) {
-        // ダメージ処理
-        if (is_needle_tile(tl) || is_needle_tile(tr)) && !self.is_inv {
-          self.hp -= 1;
-          self.is_inv = true;
-        }
-        // 壁判定
-        let tile = tl.unwrap();
-        let tile_btm = tile.pos.y + DRAGON_HEIGHT;
-        let dragon_top = self.pos.y;
-        if dragon_top < tile_btm {
-          // 頭打ち
-          self.pos.y = tile_btm;
-          self.vel.y = 0;
-        }
+    if is_solid_tile(bl) || is_solid_tile(br) {
+      // 壁判定
+      let tile = bl.unwrap();
+      let tile_top = tile.pos.y;
+      let dragon_btm = self.pos.y + DRAGON_HEIGHT;
+      if dragon_btm >= tile_top {
+        // 着地処理
+        self.pos.y = tile_top - DRAGON_HEIGHT;
+        self.vel.y = 0;
+        self.fly_frames = 0;
+        self.jump_frames = 0;
+        self.on_ground = true && !bounced; // ばねは接地しない
       }
+    // 着地処理
+    } else { self.on_ground = false; }
 
+
+
+    // 上昇時
+
+    // ダメージ判定
+    self.check_damage(tl, tr, TileId::NeedleDown);
+
+    if is_solid_tile(tl) || is_solid_tile(tr) {
+      // 壁判定
+      let tile = tl.unwrap();
+      let tile_btm = tile.pos.y + DRAGON_HEIGHT;
+      let dragon_top = self.pos.y;
+      if dragon_top < tile_btm {
+        // 頭打ち
+        self.pos.y = tile_btm;
+        self.vel.y = 0;
+        self.force.y = 0;
+      }
     }
-
+    // ばね判定
+    let mut bounced = false;
+    if let Some(t) = tl { if t.id == TileId::SpringVert { bounced = true } }
+    if let Some(t) = tr { if t.id == TileId::SpringVert { bounced = true } }
+    if bounced { self.force.y = SPRING_FORCE_Y }
 
   }
 
@@ -201,7 +221,8 @@ impl Dragon {
     // X軸の処理
     // ----------------
     self.vel.x = 0;
-
+    if self.force.x < 0 { self.force.x += 1 }
+    else if self.force.x > 0 { self.force.x -= 1 }
     // 入力を取得
     if is_pressed(BTN_RIGHT) { self.vel.x += 1; }
     if is_pressed(BTN_LEFT)  { self.vel.x -= 1; }
@@ -223,7 +244,7 @@ impl Dragon {
     }
 
     // 座標を更新
-    self.pos.x+= self.vel.x as i16;
+    self.pos.x += self.vel.x + self.force.x;
   }
 
   pub fn update_y(&mut self) {
@@ -231,9 +252,11 @@ impl Dragon {
     // Y軸の処理
     // --------
     self.vel.y += 1;
+    if self.force.y < 0 { self.force.y += 1 }
+    else if self.force.y > 0 { self.force.y -= 1 }
 
     // 入力を取得
-    if is_just_pressed(BTN_2) && self.on_ground {
+    if is_just_pressed(BTN_Z) && self.on_ground {
       self.vel.y = JUMP_POWER;
       self.is_jump = true;
       self.on_ground = false; }
@@ -245,7 +268,7 @@ impl Dragon {
         // 速度制限
         if self.vel.y >= MAX_FALL_SPD_Y { self.vel.y = MAX_FALL_SPD_Y; }
         // 踏ん張り
-        if is_pressed(BTN_2) {
+        if is_pressed(BTN_Z) {
           self.fly_frames += 1;
           if self.fly_frames <= FUNBARI_TIME {
             self.now_state = State::Fly;
@@ -259,7 +282,7 @@ impl Dragon {
       // 上昇中
       else {
         self.now_state = State::Jump;
-        if is_pressed(BTN_2) { self.jump_frames += 1; }
+        if is_pressed(BTN_Z) { self.jump_frames += 1; }
         else { self.jump_frames = 0; self.is_jump = false; }
 
         if self.jump_frames <= 10 && self.is_jump { self.vel.y -= 1; }
@@ -268,10 +291,18 @@ impl Dragon {
     }
 
     // 座標を更新
-    self.pos.y += self.vel.y as i16;
+    self.pos.y += self.vel.y + self.force.y;
   }
 
   pub fn update(&mut self) {
+    // 死亡時
+    if self.is_death {
+      self.vel.y += 1;
+      self.anim[State::Death as usize].play();
+      self.pos.x += self.vel.x + self.force.x;
+      self.pos.y += self.vel.y + self.force.y;
+      return
+    }
     // 無敵時間さん
     if self.is_inv {
       self.inv_frames += 1;
@@ -290,6 +321,11 @@ impl Dragon {
   }
 
   pub fn draw(&self, offset_x: i16, offset_y: i16) {
+    // 死亡時
+    if self.is_death {
+      self.anim[State::Death as usize].draw((self.pos.x + offset_x) as i32, (self.pos.y + offset_y) as i32)
+    }
+
     // 無敵の点滅処理(2fに一回描画をパスする)
     if self.is_inv && self.inv_frames & 0b10 == 0b10 { return; }
 
@@ -297,9 +333,7 @@ impl Dragon {
     if self.xflip { flag |= BLIT_FLIP_X }
     if self.yflip { flag |= BLIT_FLIP_Y }
     if self.rot   { flag |= BLIT_ROTATE }
-    self.anim[self.now_state as usize].draw((self.pos.x + offset_x) as i32, (self.pos.y + offset_y) as i32, flag);
+    self.anim[self.now_state as usize].drawf((self.pos.x + offset_x) as i32, (self.pos.y + offset_y) as i32, flag);
   }
-
-
 
 }
