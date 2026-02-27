@@ -149,6 +149,39 @@ impl Timeline {
 }
 
 // -------------------------------
+// Particle
+// -------------------------------
+const MAX_PARTICLE_VALUE: u8 = 32;
+#[derive(Copy, Clone)]
+pub struct Particle {
+  pub alive: bool,
+  pub pos: Vec2i,
+  pub vec: Vec2i,
+  pub next_idx: i16,
+  life: u8,
+
+}
+impl Particle {
+  pub fn new() -> Self {
+    Self { alive: false, pos: Vec2i::zero(), vec: Vec2i::zero(), life: 0, next_idx: -1 }
+  }
+  pub fn start(&mut self, pos: Vec2i, vec: Vec2i, life: u8) {
+    self.alive = true;
+    self.pos = pos;
+    self.vec = vec;
+    self.life = life;
+  }
+  pub fn update(&mut self) {
+    self.life -= 1;
+    if self.life <= 0 { self.alive = false; return }
+
+    self.pos.x += self.vec.x;
+    self.pos.y += self.vec.y;
+  }
+
+}
+
+// -------------------------------
 // Text
 // -------------------------------
 pub fn text_center_x<T: AsRef<[u8]>>(msg: T, y: i32) {
