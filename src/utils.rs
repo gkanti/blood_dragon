@@ -86,6 +86,8 @@ impl Image {
   pub const fn newf(col_idx: u16, raw: &'static RawImage, xflip: bool, yflip: bool, rot: bool) -> Self {
     Self {col_idx, raw, xflip, yflip, rot}
   }
+  pub fn get_width(&self) -> u32 { return self.raw.width; }
+  pub fn get_height(&self) -> u32 { return self.raw.height; }
   // 画像そのものの描画フラグで描画
   pub fn draw(&self, x: i32, y: i32) {
     set_drawcolor_idx(self.col_idx);

@@ -16,6 +16,7 @@ pub mod tile_gate_close;
 pub mod item_key;
 pub mod item_fragment;
 pub mod icon_fragment;
+pub mod ending_photo_01;
 use error::*;
 use dragon_idle_01::*;
 use dragon_walk_01::*;
@@ -33,6 +34,7 @@ use tile_gate_close::*;
 use item_key::*;
 use item_fragment::*;
 use icon_fragment::*;
+use ending_photo_01::*;
 
 pub const IMG_ERROR:                  Image = Image::new(  0x0432, &RAWIMG_ERROR);
  
@@ -61,6 +63,8 @@ pub const IMG_TILE_GATE_CLOSE:        Image = Image::new(  0x4320, &RAWIMG_TILE_
 pub const IMG_ITEM_KEY:               Image = Image::new(  0x4320, &RAWIMG_ITEM_KEY);
 pub const IMG_ITEM_FRAGMENT:          Image = Image::new(  0x4320, &RAWIMG_ITEM_FRAGMENT);
 pub const IMG_ICON_FRAGMENT:          Image = Image::new(  0x4320, &RAWIMG_ICON_FRAGMENT);
+
+pub const IMG_ENDING_PHOTO_01:        Image = Image::new(  0x4321, &RAWIMG_ENDING_PHOTO_01);
 
 pub static TILE_STAGE: &[&'static Image; 13] = &[
   &IMG_ERROR,                  // Empty

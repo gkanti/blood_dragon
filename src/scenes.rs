@@ -1,3 +1,4 @@
+use crate::assets::img::IMG_ENDING_PHOTO_01;
 use crate::assets::img::IMG_ICON_FRAGMENT;
 use crate::assets::img::IMG_ITEM_FRAGMENT;
 use crate::wasm4::*;
@@ -12,7 +13,7 @@ pub struct SceneHandler {
 
 impl SceneHandler {
   pub fn new() -> Self {
-    Self { now_scene: SceneData::new(SceneId::EndingTrue) }
+    Self { now_scene: SceneData::new(SceneId::Title) }
   }
   pub fn start(&mut self) {
     self.now_scene.start();
@@ -148,30 +149,26 @@ impl SceneBehavior for SceneTitle {
 pub struct SceneMain {
   dragon: Dragon,
   stage: StageHandler,
-
   disp_stage_name_clock: Clock,
   dragon_death_clock: Clock,
-
   fix_cam_pos: Vec2i,
-
   total_frag_count: u8,
   now_stage_id: StageID,
-
   is_start_stage: bool,
   is_clear_all_stage: bool,
   is_fix_cam: bool,
 }
-const INIT_STAGE: StageID = StageID::Stage1;
+
 impl SceneMain {
   pub fn new() -> Self {
     Self {
       dragon: Dragon::new(),
-      stage: StageHandler::new(INIT_STAGE),
+      stage: StageHandler::new(StageID::Stage1),
       disp_stage_name_clock: Clock::new(90),
       dragon_death_clock: Clock::new(90),
       fix_cam_pos: Vec2i::zero(),
       total_frag_count: 0,
-      now_stage_id: INIT_STAGE,
+      now_stage_id: StageID::Stage1,
       is_start_stage: true,
       is_clear_all_stage: false,
       is_fix_cam: false,
@@ -495,25 +492,34 @@ impl SceneBehavior for SceneTrueEnding {
 // タイトル
 // -------------------------------
 pub struct SceneStaffRoll {
-  is_end: bool
 }
 impl SceneStaffRoll {
   pub fn new() -> Self {
-    Self { is_end: false }
+    Self {  }
   }
 }
 impl SceneBehavior for SceneStaffRoll {
-  fn start(&mut self) {}
+  fn start(&mut self) {
+
+  }
 
   fn update(&mut self) {
 
   }
 
   fn draw(&mut self) {
-
+    IMG_ENDING_PHOTO_01.draw(80 - (IMG_ENDING_PHOTO_01.get_width()) as i32 / 2,
+                             50 - (IMG_ENDING_PHOTO_01.get_height()) as i32 / 2);
+    set_drawcolor(2, 4);
+    text_center_x("congratulations!", 88);
+    set_drawcolor(4, 0);
+    text_center_x("you saved your", 102);
+    text_center_x("imprisoned sibling!", 110);
+    text_center_x(b"press \x81", 128);
+    text_center_x("to return title", 136);
   }
   fn get_scene_cmd(&self) -> SceneCmd {
-    if !self.is_end { SceneCmd::None }
-    else            { SceneCmd::Change(SceneId::Title) }
+    if !is_just_pressed(BTN_Z) { SceneCmd::None }
+    else                       { SceneCmd::Change(SceneId::Title) }
   }
 }
