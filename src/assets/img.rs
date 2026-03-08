@@ -15,6 +15,7 @@ pub mod tile_gate_open;
 pub mod tile_gate_close;
 pub mod item_key;
 pub mod item_fragment;
+pub mod icon_fragment;
 use error::*;
 use dragon_idle_01::*;
 use dragon_walk_01::*;
@@ -31,33 +32,35 @@ use tile_gate_open::*;
 use tile_gate_close::*;
 use item_key::*;
 use item_fragment::*;
+use icon_fragment::*;
 
-pub const IMG_ERROR:                  Image = Image::new( 0x0432, &RAWIMG_ERROR);
-
-pub const IMG_DRAGON_IDLE_01:         Image = Image::new( 0x0432, &RAWIMG_DRAGON_IDLE_01);
-pub const IMG_DRAGON_WALK_01:         Image = Image::new( 0x0432, &RAWIMG_DRAGON_WALK_01);
-pub const IMG_DRAGON_WALK_02:         Image = Image::new( 0x0432, &RAWIMG_DRAGON_WALK_02);
-pub const IMG_DRAGON_WALK_03:         Image = Image::new( 0x0432, &RAWIMG_DRAGON_WALK_03);
-pub const IMG_DRAGON_JUMP_01:         Image = Image::new( 0x0432, &RAWIMG_DRAGON_JUMP_01);
-pub const IMG_DRAGON_FLY_01:          Image = Image::new( 0x0432, &RAWIMG_DRAGON_FLY_01);
-pub const IMG_DRAGON_FLY_02:          Image = Image::new( 0x0432, &RAWIMG_DRAGON_FLY_02);
-pub const IMG_DRAGON_FALL_01:         Image = Image::new( 0x0432, &RAWIMG_DRAGON_FALL_01);
-pub const IMG_DRAGON_DEATH_01:        Image = Image::new( 0x0432, &RAWIMG_DRAGON_FLY_01);
+pub const IMG_ERROR:                  Image = Image::new(  0x0432, &RAWIMG_ERROR);
+ 
+pub const IMG_DRAGON_IDLE_01:         Image = Image::new(  0x0432, &RAWIMG_DRAGON_IDLE_01);
+pub const IMG_DRAGON_WALK_01:         Image = Image::new(  0x0432, &RAWIMG_DRAGON_WALK_01);
+pub const IMG_DRAGON_WALK_02:         Image = Image::new(  0x0432, &RAWIMG_DRAGON_WALK_02);
+pub const IMG_DRAGON_WALK_03:         Image = Image::new(  0x0432, &RAWIMG_DRAGON_WALK_03);
+pub const IMG_DRAGON_JUMP_01:         Image = Image::new(  0x0432, &RAWIMG_DRAGON_JUMP_01);
+pub const IMG_DRAGON_FLY_01:          Image = Image::new(  0x0432, &RAWIMG_DRAGON_FLY_01);
+pub const IMG_DRAGON_FLY_02:          Image = Image::new(  0x0432, &RAWIMG_DRAGON_FLY_02);
+pub const IMG_DRAGON_FALL_01:         Image = Image::new(  0x0432, &RAWIMG_DRAGON_FALL_01);
+pub const IMG_DRAGON_DEATH_01:        Image = Image::new(  0x0432, &RAWIMG_DRAGON_FLY_01);
 pub const IMG_DRAGON_DEATH_02:        Image = Image::newf( 0x0432, &RAWIMG_DRAGON_FLY_02, false, false, true);
 pub const IMG_DRAGON_DEATH_03:        Image = Image::newf( 0x0432, &RAWIMG_DRAGON_FLY_01, true, true, false);
 pub const IMG_DRAGON_DEATH_04:        Image = Image::newf( 0x0432, &RAWIMG_DRAGON_FLY_02, false, true, true);
 
-pub const IMG_TILE_WALL:              Image = Image::new( 0x1243, &RAWIMG_TILE_WALL);
-pub const IMG_TILE_NEEDLE_UP:         Image = Image::newf(0x4320, &RAWIMG_TILE_NEEDLE, false, false, false);
-pub const IMG_TILE_NEEDLE_RIGHT:      Image = Image::newf(0x4320, &RAWIMG_TILE_NEEDLE, false, true, true);
-pub const IMG_TILE_NEEDLE_LEFT:       Image = Image::newf(0x4320, &RAWIMG_TILE_NEEDLE, false, false, true);
-pub const IMG_TILE_NEEDLE_DOWN:       Image = Image::newf(0x4320, &RAWIMG_TILE_NEEDLE, false, true, false);
-pub const IMG_TILE_SPRING_VERTICAL:   Image = Image::new( 0x4321, &RAWIMG_TILE_SPRING);
-pub const IMG_TILE_SPRING_HORIZONTAL: Image = Image::newf(0x4321, &RAWIMG_TILE_SPRING, false, false, true);
-pub const IMG_TILE_GATE_OPEN:         Image = Image::new( 0x0040, &RAWIMG_TILE_GATE_OPEN);
-pub const IMG_TILE_GATE_CLOSE:        Image = Image::new( 0x4320, &RAWIMG_TILE_GATE_CLOSE);
-pub const IMG_ITEM_KEY:               Image = Image::new( 0x4320, &RAWIMG_ITEM_KEY);
-pub const IMG_ITEM_FRAGMENT:          Image = Image::new( 0x4320, &RAWIMG_ITEM_FRAGMENT);
+pub const IMG_TILE_WALL:              Image = Image::new(  0x1243, &RAWIMG_TILE_WALL);
+pub const IMG_TILE_NEEDLE_UP:         Image = Image::newf( 0x4320, &RAWIMG_TILE_NEEDLE, false, false, false);
+pub const IMG_TILE_NEEDLE_RIGHT:      Image = Image::newf( 0x4320, &RAWIMG_TILE_NEEDLE, false, true, true);
+pub const IMG_TILE_NEEDLE_LEFT:       Image = Image::newf( 0x4320, &RAWIMG_TILE_NEEDLE, false, false, true);
+pub const IMG_TILE_NEEDLE_DOWN:       Image = Image::newf( 0x4320, &RAWIMG_TILE_NEEDLE, false, true, false);
+pub const IMG_TILE_SPRING_VERTICAL:   Image = Image::new(  0x4321, &RAWIMG_TILE_SPRING);
+pub const IMG_TILE_SPRING_HORIZONTAL: Image = Image::newf( 0x4321, &RAWIMG_TILE_SPRING, false, false, true);
+pub const IMG_TILE_GATE_OPEN:         Image = Image::new(  0x0040, &RAWIMG_TILE_GATE_OPEN);
+pub const IMG_TILE_GATE_CLOSE:        Image = Image::new(  0x4320, &RAWIMG_TILE_GATE_CLOSE);
+pub const IMG_ITEM_KEY:               Image = Image::new(  0x4320, &RAWIMG_ITEM_KEY);
+pub const IMG_ITEM_FRAGMENT:          Image = Image::new(  0x4320, &RAWIMG_ITEM_FRAGMENT);
+pub const IMG_ICON_FRAGMENT:          Image = Image::new(  0x4320, &RAWIMG_ICON_FRAGMENT);
 
 pub static TILE_STAGE: &[&'static Image; 13] = &[
   &IMG_ERROR,                  // Empty

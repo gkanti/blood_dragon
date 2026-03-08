@@ -1,6 +1,5 @@
 
 use crate::{scenes::*, utils::update_btn};
-use crate::wasm4::*;
 pub struct Game {
   scene: SceneHandler,
 }

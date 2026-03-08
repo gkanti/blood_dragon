@@ -1,6 +1,7 @@
 use crate::wasm4::*;
 use lazy_static::lazy_static;
-use std::{sync::Mutex};
+use std::{collections::VecDeque, sync::Mutex};
+use std::ops::{Add, Sub, Neg, Mul, Div};
 
 // -------------------------------
 // Button Handler
@@ -115,16 +116,15 @@ impl Image {
   }
 }
 
-#[derive(Default)]
 pub struct Timeline {
   pub images: &'static[&'static Image],
-  pub wait_frames: Vec<u8>,
+  pub wait_frames: &'static [u8],
   pub frame_count: u8,
   pub now_idx: u8,
   pub max_idx: u8,
 }
 impl Timeline {
-  pub fn new(images: &'static [&'static Image], wait_frames: Vec<u8>) -> Self {
+  pub fn new(images: &'static [&'static Image], wait_frames: &'static [u8]) -> Self {
     Self { images, wait_frames, max_idx: images.len() as u8, frame_count: 0, now_idx: 0, }
   }
   pub fn play(&mut self) {
@@ -193,6 +193,12 @@ pub fn text_center_y<T: AsRef<[u8]>>(msg: T, x: i32) {
   let y = 160 - (8 / 2);
   text(msg, x, y);
 }
+pub fn text_center<T: AsRef<[u8]>>(msg: T) {
+  let msg_ref = msg.as_ref();
+  let x = ((160 - (msg_ref.len()*8)) / 2) as i32;
+  let y = 160 - (8 / 2);
+  text(msg, x, y);
+}
 // -------------------------------
 // Color
 // -------------------------------
@@ -219,6 +225,60 @@ impl Vec2i {
     Vec2i { x: 0, y: 0 }
   }
 }
+impl Add<Vec2i> for Vec2i {
+  type Output = Vec2i;
+  fn add(self, rhs: Vec2i) -> Vec2i {
+    Vec2i::new(self.x + rhs.x, self.y + rhs.y)
+  }
+}
+impl Add<i16> for Vec2i {
+  type Output = Vec2i;
+  fn add(self, rhs: i16) -> Vec2i {
+    Vec2i::new(self.x + rhs, self.y + rhs)
+  }
+}
+impl Sub<Vec2i> for Vec2i {
+  type Output = Vec2i;
+  fn sub(self, rhs: Vec2i) -> Vec2i {
+    Vec2i::new(self.x - rhs.x, self.y - rhs.y)
+  }
+}
+impl Sub<i16> for Vec2i {
+  type Output = Vec2i;
+  fn sub(self, rhs: i16) -> Vec2i {
+    Vec2i::new(self.x - rhs, self.y - rhs)
+  }
+}
+impl Neg for Vec2i {
+  type Output = Vec2i;
+  fn neg(self) -> Vec2i {
+    Vec2i::new(-self.x, -self.y)
+  }
+}
+impl Mul<Vec2i> for Vec2i {
+  type Output = Vec2i;
+  fn mul(self, rhs: Vec2i) -> Vec2i {
+    Vec2i::new(self.x * rhs.x, self.y * rhs.y)
+  }
+}
+impl Mul<i16> for Vec2i {
+  type Output = Vec2i;
+  fn mul(self, rhs: i16) -> Vec2i {
+    Vec2i::new(self.x * rhs, self.y * rhs)
+  }
+}
+impl Div<Vec2i> for Vec2i {
+  type Output = Vec2i;
+  fn div(self, rhs: Vec2i) -> Vec2i {
+    Vec2i::new(self.x / rhs.x, self.y / rhs.y)
+  }
+}
+impl Div<i16> for Vec2i {
+  type Output = Vec2i;
+  fn div(self, rhs: i16) -> Vec2i {
+    Vec2i::new(self.x / rhs, self.y / rhs)
+  }
+}
 
 pub struct Clock {
   wait_frame: u16,
@@ -235,5 +295,42 @@ impl Clock {
   pub fn is_time_out(&self) -> bool { return self.now_frame >= self.wait_frame }
   pub fn reset(&mut self) {
     self.now_frame = 0;
+  }
+}
+
+pub struct InstantEvent<F: FnMut()> {
+  clock: Clock,
+  func: F,
+}
+impl<F: FnMut()> InstantEvent<F> {
+  pub fn new(available_time: u16, func: F) -> Self {
+    Self { clock: Clock::new(available_time), func }
+  }
+  pub fn update(&mut self) {
+    (self.func)();
+    self.clock.tick();
+  }
+  pub fn is_expired(&self) -> bool {
+    self.clock.is_time_out()
+  }
+}
+
+pub struct EventHandler {
+  events: VecDeque<InstantEvent<Box<dyn FnMut()>>>
+}
+impl EventHandler {
+  pub fn new() -> Self {
+    Self { events: VecDeque::new() }
+  }
+  pub fn add<F: FnMut()>(&mut self, ev: InstantEvent<Box<dyn FnMut()>>) -> &mut Self {
+    self.events.push_back(ev);
+    self
+  }
+  pub fn update(&mut self) {
+    if self.events.len() == 0 { return; }
+
+    let ev = &mut self.events[0];
+    ev.update();
+    if ev.is_expired() { _ = self.events.pop_front() }
   }
 }
