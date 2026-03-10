@@ -23,7 +23,7 @@ enum State {
   Death,
 }
 pub struct Dragon {
-  anim: [Timeline; 6],
+  anim: [Animation; 6],
   pub pos: Vec2i,
   pub vel: Vec2i,
   pub force: Vec2i,
@@ -73,12 +73,12 @@ fn get_cmd_from_tile(t: Option<&Tile>) -> InteractiveCmd {
 impl Dragon {
   pub fn new() -> Self {
     Self { anim: [
-      Timeline::new(ANIM_DRAGON_IDLE,  &[255]),
-      Timeline::new(ANIM_DRAGON_WALK,  &[6, 6, 6]),
-      Timeline::new(ANIM_DRAGON_JUMP,  &[255]),
-      Timeline::new(ANIM_DRAGON_FLY,   &[4, 4]),
-      Timeline::new(ANIM_DRAGON_FALL,  &[255]),
-      Timeline::new(ANIM_DRAGON_DEATH, &[5, 5, 5, 5])
+      Animation::new(ANIM_DRAGON_IDLE,  &[255]),
+      Animation::new(ANIM_DRAGON_WALK,  &[6, 6, 6]),
+      Animation::new(ANIM_DRAGON_JUMP,  &[255]),
+      Animation::new(ANIM_DRAGON_FLY,   &[4, 4]),
+      Animation::new(ANIM_DRAGON_FALL,  &[255]),
+      Animation::new(ANIM_DRAGON_DEATH, &[5, 5, 5, 5])
       ],
       pos: Vec2i::zero(), vel: Vec2i::zero(), force: Vec2i::zero(), hp: MAX_HP,
       now_state: State::Idle, old_state: State::Idle, evt_death_clock: Clock::new(80),
@@ -87,9 +87,7 @@ impl Dragon {
       on_ground: true, xflip: false, yflip: false, rot: false
     }
   }
-  // ----------------
   // 初期化
-  // ----------------
   pub fn reset(&mut self, pos: Vec2i) {
     self.pos = pos;
     self.vel = Vec2i::zero();
@@ -113,16 +111,12 @@ impl Dragon {
     self.yflip = false;
     self.rot = false;
   }
-  // ----------------
   // 外部からプレイヤーの干渉なしに動かす関数群
-  // ----------------
   pub fn evt_stop(&mut self) {
     self.now_state = State::Idle;
     self.vel = Vec2i::zero();
   }
-  pub fn evt_flip_x(&mut self) {
-    self.xflip = !self.xflip;
-  }
+
   pub fn evt_walk(&mut self, vx: i16) {
     // 加速度のリセット
     self.vel.x = vx;
@@ -149,9 +143,8 @@ impl Dragon {
     // 座標を更新
     self.pos.x += self.vel.x + self.force.x;
   }
-  // ----------------
+
   // ダメージを受けているか確認
-  // ----------------
   fn check_damage(&mut self, tile1: Option<&Tile>, tile2: Option<&Tile>, check_tile_id: TileId) {
     // お前は既に死んでいる
     if self.is_death || self.is_inv { return }
@@ -165,18 +158,16 @@ impl Dragon {
       self.is_inv = true; // 無敵になる
     }
   }
-  // ----------------
+
   // 死亡確認
-  // ----------------
   fn check_death(&mut self) {
     if self.hp <= 0 {
       self.is_death = true;
       self.force.y -= 8;
     }
   }
-  // ----------------
+
   // アイテム等の取得処理
-  // ----------------
   pub fn check_interactive(&mut self, tl: Option<&Tile>, tr: Option<&Tile>, bl: Option<&Tile>, br: Option<&Tile>) -> [InteractiveCmd; 4] {
     return [
       get_cmd_from_tile(tl),
@@ -185,9 +176,8 @@ impl Dragon {
       get_cmd_from_tile(br)
     ]
   }
-  // ----------------
+
   // X軸の衝突処理
-  // ----------------
   pub fn check_collision_x(&mut self, tl: Option<&Tile>, tr: Option<&Tile>, bl: Option<&Tile>, br: Option<&Tile>) {
     // 左移動時
     // ダメージ判定
@@ -226,9 +216,8 @@ impl Dragon {
     if let Some(t) = br { if t.id == TileId::SpringHori { bounced = true } }
     if bounced { self.force.x = -SPRING_FORCE_X }
   }
-  // ----------------
+
   // Y軸の衝突処理
-  // ----------------
   pub fn check_collision_y(&mut self, tl: Option<&Tile>, tr: Option<&Tile>, bl: Option<&Tile>, br: Option<&Tile>) {
     // 落下時
     // ダメージ判定
@@ -279,9 +268,8 @@ impl Dragon {
 
   }
 
-  // ----------------
+
   // X軸の更新処理
-  // ----------------
   pub fn update_x(&mut self) {
     // 加速度のリセット
     self.vel.x = 0;
@@ -314,9 +302,8 @@ impl Dragon {
     // 座標を更新
     self.pos.x += self.vel.x + self.force.x;
   }
-  // ----------------
+
   // Y軸の更新処理
-  // ----------------
   pub fn update_y(&mut self) {
     // 重力を加算
     self.vel.y += 1;
@@ -364,9 +351,8 @@ impl Dragon {
     self.pos.y += self.vel.y + self.force.y;
   }
 
-  // ----------------
+
   // 共通の更新処理
-  // ----------------
   pub fn update(&mut self) {
     // 無敵時間さん
     if self.is_inv {
@@ -387,9 +373,8 @@ impl Dragon {
     // 死亡チェック
     self.check_death();
   }
-  // ----------------
+
   // 死亡時のみの更新処理
-  // ----------------
   pub fn update_death(&mut self) {
     self.death_frames += 1;
     if self.force.y > 0 { self.force.y += 1; } 
@@ -401,9 +386,8 @@ impl Dragon {
     self.pos.x += dx;
     self.pos.y += dy;
   }
-  // ----------------
+
   // 描画処理
-  // ----------------
   pub fn draw(&self, offset_x: i16, offset_y: i16) {
     // 無敵の点滅処理(2fに一回描画をパスする)
     if self.is_inv && self.inv_frames & 0b10 == 0b10 { return; }
@@ -415,9 +399,8 @@ impl Dragon {
     if self.rot   { flag |= BLIT_ROTATE }
     self.anim[self.now_state as usize].drawf((self.pos.x + offset_x) as i32, (self.pos.y + offset_y) as i32, flag);
   }
-  // ----------------
+
   // 死亡時のみの描画処理
-  // ----------------
   pub fn draw_death(&self, offset_x: i16, offset_y: i16) {
     self.anim[State::Death as usize].draw((self.pos.x + offset_x) as i32, (self.pos.y + offset_y) as i32)
   }

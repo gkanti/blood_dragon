@@ -19,11 +19,11 @@ lazy_static! {
 
 #[no_mangle]
 fn start() {
-  GAME.lock().expect("").start()
+  GAME.lock().expect("game_state").start()
 }
 
 #[no_mangle]
 fn update() {
-  GAME.lock().expect("").update();
+  GAME.lock().expect("game_state").update();
 
 }

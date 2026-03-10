@@ -1,14 +1,15 @@
 use crate::wasm4::*;
 use lazy_static::lazy_static;
-use std::{collections::VecDeque, sync::Mutex};
+use std::sync::Mutex;
 use std::ops::{Add, Sub, Neg, Mul, Div};
 
 // -------------------------------
-// Button Handler
+// ボタン入力
 // -------------------------------
 lazy_static! {
   static ref BTN_HANDLER: Mutex<ButtonHandler> = Mutex::new(ButtonHandler::new());
 }
+
 pub const BTN_X:     u8 = 0;
 pub const BTN_Z:     u8 = 1;
 pub const BTN_LEFT:  u8 = 4;
@@ -16,34 +17,38 @@ pub const BTN_RIGHT: u8 = 5;
 pub const BTN_UP:    u8 = 6;
 pub const BTN_DOWN:  u8 = 7;
 
+// ボタンの入力を更新する
+pub fn update_btn() {
+  BTN_HANDLER.lock().expect("btn_state").update();
+}
+// ボタンが押されている長さを取得する
+pub fn get_pressed_time(btn: u8) -> u16 {
+  BTN_HANDLER.lock().expect("btn_state").btn_states[btn as usize]
+}
+// ボタンが押されているか取得する
+pub fn is_pressed(btn: u8) -> bool {
+  BTN_HANDLER.lock().expect("btn_state").btn_states[btn as usize] >= 1
+}
+// ボタンが押された瞬間か取得する
+pub fn is_just_pressed(btn: u8) -> bool {
+  BTN_HANDLER.lock().expect("btn_state").btn_states[btn as usize] == 1
+}
+// ボタンが話された瞬間か取得する
+pub fn is_just_released(btn: u8) -> bool {
+  let handler = BTN_HANDLER.lock().expect("btn_state");
+  // 「ボタンの押された長さが0である」かつ、「直近にボタンの状態が変化した」であれば離された瞬間
+  (handler.btn_states[btn as usize] == 0) && (handler.just_changed_btn_states & (1 << btn) != 0)
+}
+
 pub struct ButtonHandler {
   btn_states: [u16; 8],
   old_btn_states: u8,
   just_changed_btn_states: u8
 }
 
-pub fn update_btn() {
-  BTN_HANDLER.lock().expect("btn_state").update();
-}
-pub fn get_pressed_time(btn: u8) -> u16 {
-  BTN_HANDLER.lock().expect("btn_state").btn_states[btn as usize]
-}
-pub fn is_pressed(btn: u8) -> bool {
-  BTN_HANDLER.lock().expect("btn_state").btn_states[btn as usize] >= 1
-}
-pub fn is_just_pressed(btn: u8) -> bool {
-  BTN_HANDLER.lock().expect("btn_state").btn_states[btn as usize] == 1
-}
-pub fn is_just_released(btn: u8) -> bool {
-  let handler = BTN_HANDLER.lock().expect("btn_state");
-  // 「ボタンの押された長さが0である」かつ、「直近にボタンの状態が変化した」であれば離された瞬間
-  // (右辺について補足: 調べたいボタンのビットのみ立った数値と、変更があったボタンのビットが立った数値をAND演算している。)
-  (handler.btn_states[btn as usize] == 0) && (handler.just_changed_btn_states & (1 << btn) != 0)
-}
-
 impl ButtonHandler {
   pub fn new() -> Self {
-    Self { btn_states: [0,0,0,0,0,0,0,0], old_btn_states: 0, just_changed_btn_states: 0}
+    Self { btn_states: [0; 8], old_btn_states: 0, just_changed_btn_states: 0}
   }
   pub fn update(&mut self) {
     let gamepad = unsafe{*GAMEPAD1};
@@ -63,9 +68,8 @@ impl ButtonHandler {
 
 
 // -------------------------------
-// Image
+// 画像関連
 // -------------------------------
-
 pub struct RawImage {
   pub width: u32,
   pub height: u32,
@@ -83,10 +87,13 @@ impl Image {
   pub const fn new(col_idx: u16, raw: &'static RawImage) -> Self {
     Self {col_idx, raw, xflip: false, yflip: false, rot: false}
   }
+  // フラグを持たせたい時に使用する
   pub const fn newf(col_idx: u16, raw: &'static RawImage, xflip: bool, yflip: bool, rot: bool) -> Self {
     Self {col_idx, raw, xflip, yflip, rot}
   }
+  // 画像の幅を取得する
   pub fn get_width(&self) -> u32 { return self.raw.width; }
+  // 画像の高さを取得する
   pub fn get_height(&self) -> u32 { return self.raw.height; }
   // 画像そのものの描画フラグで描画
   pub fn draw(&self, x: i32, y: i32) {
@@ -97,7 +104,7 @@ impl Image {
     if self.rot   { add_flags |= BLIT_ROTATE }
     blit(self.raw.data, x, y, self.raw.width, self.raw.height, self.raw.flags | add_flags);
   }
-  // 画像の描画フラグは無視して新たにフラグを用いて描画
+  // 画像の描画フラグは無視し、新たにフラグを用いて描画
   pub fn drawf(&self, x: i32, y: i32, flags: u32) {
     set_drawcolor_idx(self.col_idx);
     blit(self.raw.data, x, y, self.raw.width, self.raw.height, self.raw.flags | flags);
@@ -111,24 +118,28 @@ impl Image {
     if self.rot   { add_flags |= BLIT_ROTATE }
     blit_sub(self.raw.data, x, y, w, h, sx, sy, self.raw.width, self.raw.flags | add_flags);
   }
-  // 画像の描画フラグは無視して新たにフラグを用いて描画(一部のみ)
+  // 画像の描画フラグは無視し、新たにフラグを用いて描画(一部のみ)
   pub fn draw_subf(&self, x: i32, y: i32, w: u32, h: u32, sx: u32, sy: u32, flags: u32) {
     set_drawcolor_idx(self.col_idx);
     blit_sub(self.raw.data, x, y, w, h, sx, sy, self.raw.width, self.raw.flags | flags);
   }
 }
 
-pub struct Timeline {
+// -------------------------------
+// アニメーション関連
+// -------------------------------
+pub struct Animation {
   pub images: &'static[&'static Image],
   pub wait_frames: &'static [u8],
   pub frame_count: u8,
   pub now_idx: u8,
   pub max_idx: u8,
 }
-impl Timeline {
+impl Animation {
   pub fn new(images: &'static [&'static Image], wait_frames: &'static [u8]) -> Self {
     Self { images, wait_frames, max_idx: images.len() as u8, frame_count: 0, now_idx: 0, }
   }
+  // アニメーションを再生する
   pub fn play(&mut self) {
     self.frame_count += 1;
     if self.frame_count >= self.wait_frames[self.now_idx as usize] {
@@ -137,12 +148,15 @@ impl Timeline {
       if self.now_idx >= self.max_idx { self.now_idx = 0; }
     }
   }
+  // アニメーションを描画する
   pub fn draw(&self, x: i32, y: i32) {
     self.images[self.now_idx as usize].draw(x, y);
   }
+  // フラグを指定してアニメーションを描画する
   pub fn drawf(&self, x: i32, y: i32, flags: u32) {
     self.images[self.now_idx as usize].drawf(x, y, flags);
   }
+  // アニメーションをリセットする
   pub fn reset(&mut self) {
     self.now_idx = 0;
     self.frame_count = 0;
@@ -151,7 +165,7 @@ impl Timeline {
 }
 
 // -------------------------------
-// Particle
+// パーティクル
 // -------------------------------
 const MAX_PARTICLE_VALUE: u8 = 32;
 #[derive(Copy, Clone)]
@@ -159,13 +173,12 @@ pub struct Particle {
   pub alive: bool,
   pub pos: Vec2i,
   pub vec: Vec2i,
-  pub next_idx: i16,
   life: u8,
 
 }
 impl Particle {
   pub fn new() -> Self {
-    Self { alive: false, pos: Vec2i::zero(), vec: Vec2i::zero(), life: 0, next_idx: -1 }
+    Self { alive: false, pos: Vec2i::zero(), vec: Vec2i::zero(), life: 0}
   }
   pub fn start(&mut self, pos: Vec2i, vec: Vec2i, life: u8) {
     self.alive = true;
@@ -176,7 +189,6 @@ impl Particle {
   pub fn update(&mut self) {
     self.life -= 1;
     if self.life <= 0 { self.alive = false; return }
-
     self.pos.x += self.vec.x;
     self.pos.y += self.vec.y;
   }
@@ -184,17 +196,20 @@ impl Particle {
 }
 
 // -------------------------------
-// Text
+// テキスト
 // -------------------------------
+// テキストを画面中央(横軸)に表示する
 pub fn text_center_x<T: AsRef<[u8]>>(msg: T, y: i32) {
   let msg_ref = msg.as_ref();
   let x = ((160 - (msg_ref.len()*8)) / 2) as i32;
   text(msg, x, y);
 }
+// テキストを画面中央(縦軸)に表示する
 pub fn text_center_y<T: AsRef<[u8]>>(msg: T, x: i32) {
   let y = 160 - (8 / 2);
   text(msg, x, y);
 }
+// テキストを画面中央に表示する
 pub fn text_center<T: AsRef<[u8]>>(msg: T) {
   let msg_ref = msg.as_ref();
   let x = ((160 - (msg_ref.len()*8)) / 2) as i32;
@@ -202,18 +217,21 @@ pub fn text_center<T: AsRef<[u8]>>(msg: T) {
   text(msg, x, y);
 }
 // -------------------------------
-// Color
+// 色指定
 // -------------------------------
+// 描画色を指定する(簡単)
 pub fn set_drawcolor(fcol: u16, scol: u16) {
   unsafe { *DRAW_COLORS = (scol << 4) | fcol; }
 }
+// 描画色を指定する
 pub fn set_drawcolor_idx(idx: u16) {
   unsafe { *DRAW_COLORS = idx }
 }
 
 // -------------------------------
-// Math
+// 数学系
 // -------------------------------
+// ベクトル
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Vec2i {
   pub x: i16,
@@ -282,6 +300,9 @@ impl Div<i16> for Vec2i {
   }
 }
 
+// -------------------------------
+// タイミング系
+// -------------------------------
 pub struct Clock {
   wait_frame: u16,
   now_frame: u16,
@@ -300,39 +321,72 @@ impl Clock {
   }
 }
 
-pub struct InstantEvent<F: FnMut()> {
-  clock: Clock,
-  func: F,
+// -------------------------------
+// イベント系
+// -------------------------------
+type UpdateProc<T> = fn(&mut T);
+type DrawProc<T> = fn(&T);
+
+trait CallableMut<T> {
+  fn call_func(&self, actor: &mut T);
 }
-impl<F: FnMut()> InstantEvent<F> {
-  pub fn new(available_time: u16, func: F) -> Self {
-    Self { clock: Clock::new(available_time), func }
+trait Callable<T> {
+  fn call_func(&self, actor: &T);
+}
+
+impl<T> CallableMut<T> for UpdateProc<T> {
+  fn call_func(&self, actor: &mut T) {
+      (self)(actor)
   }
-  pub fn update(&mut self) {
-    (self.func)();
-    self.clock.tick();
-  }
-  pub fn is_expired(&self) -> bool {
-    self.clock.is_time_out()
+}
+impl<T> Callable<T> for DrawProc<T> {
+  fn call_func(&self, actor: &T) {
+      (self)(actor)
   }
 }
 
-pub struct EventHandler {
-  events: VecDeque<InstantEvent<Box<dyn FnMut()>>>
+pub struct Event<T> {
+  duration: u16,
+  update: Option<UpdateProc<T>>,
+  draw: Option<DrawProc<T>>
 }
-impl EventHandler {
-  pub fn new() -> Self {
-    Self { events: VecDeque::new() }
+impl<T> Event<T> {
+  pub const fn new(duration: u16, update: Option<UpdateProc<T>>, draw: Option<DrawProc<T>>) -> Self {
+    Self { duration, update, draw }
   }
-  pub fn add<F: FnMut()>(&mut self, ev: InstantEvent<Box<dyn FnMut()>>) -> &mut Self {
-    self.events.push_back(ev);
-    self
-  }
-  pub fn update(&mut self) {
-    if self.events.len() == 0 { return; }
+}
 
-    let ev = &mut self.events[0];
-    ev.update();
-    if ev.is_expired() { _ = self.events.pop_front() }
+pub struct TimeLine<T: 'static, const N: usize> {
+  events: &'static [Event<T>; N],
+  idx: usize,
+  frame: u16,
+  pub is_end: bool,
+}
+impl<T: 'static, const N: usize> TimeLine<T, N> {
+  pub const fn new(events: &'static [Event<T>; N]) -> Self {
+    Self { events, idx: 0, frame: 0, is_end: false}
+  }
+  pub fn update(&mut self, actor: &mut T) {
+    if self.is_end { return; }
+
+    let event = &self.events[self.idx];
+    if let Some(update_proc) = &event.update {
+      update_proc.call_func(actor);
+    }
+
+    self.frame += 1;
+    if self.frame >= event.duration {
+      self.frame = 0;
+      self.idx += 1;
+      if self.idx >= N { self.idx = N-1; self.is_end = true; }
+    }
+  }
+  pub fn draw(&self, actor: &T) {
+    if self.is_end { return; }
+
+    let event = &self.events[self.idx];
+    if let Some(draw_proc) = &event.draw {
+      draw_proc.call_func(actor);
+    }
   }
 }

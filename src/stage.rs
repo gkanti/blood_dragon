@@ -1,6 +1,3 @@
-use std::result;
-
-use crate::wasm4::*;
 use crate::assets::img::{TILE_STAGE};
 use crate::utils::*;
 
@@ -125,7 +122,6 @@ pub struct StageHandler {
   now_stage: &'static StageData,
   start_tile_idx: usize,
   goal_tile_idx:  usize,
-  pub fragment_count: u8,
   tiles: Vec<Tile>
 }
 impl StageHandler {
@@ -134,7 +130,6 @@ impl StageHandler {
       now_stage: DAT_STAGE_ALL[id as usize],
       start_tile_idx: 0,
       goal_tile_idx: 0,
-      fragment_count: 0,
       tiles: Vec::with_capacity(MAX_STAGE_DATA_SIZE as usize)
     };
 
@@ -143,7 +138,6 @@ impl StageHandler {
   }
   fn setup(&mut self) {
     self.now_stage.get_tiles(&mut self.tiles);
-    self.fragment_count = 0;
     self.start_tile_idx = self.tiles.iter().position(|t| t.id == TileId::Start).unwrap();
     self.goal_tile_idx = self.tiles.iter().position(|t| t.id == TileId::GoalClosed).unwrap();
   }
@@ -179,7 +173,6 @@ impl StageHandler {
         let tile = self.get_tile_from_tile_pos(x, y);
         if tile.id != TileId::Empty {
           tile.id = TileId::Empty;
-          self.fragment_count += 1;
         }
       }
       _ => {}
