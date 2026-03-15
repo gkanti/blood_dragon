@@ -51,6 +51,7 @@ pub struct Dragon {
   rot: bool,
 }
 
+// タイルが壁の判定かどうか取得する
 fn is_solid_tile(tile: Option<&Tile>) -> bool {
   if let Some(t) = tile {
     matches!(t.id, TileId::Wall |
@@ -58,7 +59,7 @@ fn is_solid_tile(tile: Option<&Tile>) -> bool {
                    TileId::NeedleDown | TileId::NeedleLeft | TileId::NeedleRight | TileId::NeedleUp)
   } else { false }
 }
-
+// タイルに対応するInteractiveCmdを取得する
 fn get_cmd_from_tile(t: Option<&Tile>) -> InteractiveCmd {
   if let Some(tile) = t {
     match tile.id {
@@ -111,12 +112,12 @@ impl Dragon {
     self.yflip = false;
     self.rot = false;
   }
-  // 外部からプレイヤーの干渉なしに動かす関数群
+  // 外部からプレイヤーの干渉なしに動かす関数
   pub fn evt_stop(&mut self) {
     self.now_state = State::Idle;
     self.vel = Vec2i::zero();
   }
-
+  // 外部からプレイヤーの干渉なしに動かす関数
   pub fn evt_walk(&mut self, vx: i16) {
     // 加速度のリセット
     self.vel.x = vx;
@@ -391,12 +392,16 @@ impl Dragon {
   // 死亡時のみの更新処理
   pub fn update_death(&mut self) {
     self.death_frames += 1;
+
     if self.force.y > 0 { self.force.y += 1; } 
     if self.death_frames & 0b10 == 0b10 { self.vel.y += 1 }
+
     self.anim[State::Death as usize].play();
+
     let dx = self.vel.x + self.force.x;
     let mut dy = self.vel.y + self.force.y;
     if dy > MAX_FALL_SPD_Y { dy = MAX_FALL_SPD_Y }
+
     self.pos.x += dx;
     self.pos.y += dy;
   }
@@ -411,6 +416,7 @@ impl Dragon {
     if self.xflip { flag |= BLIT_FLIP_X }
     if self.yflip { flag |= BLIT_FLIP_Y }
     if self.rot   { flag |= BLIT_ROTATE }
+    
     self.anim[self.now_state as usize].drawf((self.pos.x + offset_x) as i32, (self.pos.y + offset_y) as i32, flag);
   }
 

@@ -60,9 +60,6 @@ impl Tile {
   pub fn get_global_pos_y(&self) -> i16 {
     return self.local_y as i16 * STAGE_TILE_SIZE as i16
   }
-  pub fn get_global_pos(&self) -> Vec2i {
-    return Vec2i { x: self.get_global_pos_x(), y: self.get_global_pos_y() }
-  }
 }
 
 // ステージのデータ格納用
@@ -152,7 +149,7 @@ impl StageHandler {
   }
 
   fn get_tile_from_tile_pos(&mut self, x: u8, y: u8) -> &mut Tile {
-    let idx = self.now_stage.width as usize * y as usize + x as usize;;
+    let idx = self.now_stage.width as usize * y as usize + x as usize;
     return &mut self.tiles[idx as usize];
   }
 
@@ -223,23 +220,6 @@ impl StageHandler {
       TILE_STAGE[tile.id as usize].draw(draw_pos_x as i32, draw_pos_y as i32);
       idx += 1;
     }
-    // ここ最適化できそう
-    //for i in 0..self.tiles.len() {
-    //  let tile = &self.tiles[i];
-    //  // 空のタイルは描画しない
-    //  if tile.id == TileId::Empty || tile.id == TileId::Start { continue; }
-    //  
-    //  let draw_pos_x = tile.get_global_pos_x() + offset_x;
-    //  let draw_pos_y = tile.get_global_pos_y() + offset_y;
-    //  
-    //  // 画面内のタイルのみ描画する
-    //  if (draw_pos_x + STAGE_TILE_SIZE as i16) < 0 || draw_pos_x > 160 ||
-    //     (draw_pos_y + STAGE_TILE_SIZE as i16) < 0 || draw_pos_y > 160
-    //     { continue; }
-    //  
-    //  TILE_STAGE[tile.id as usize].draw(draw_pos_x as i32, draw_pos_y as i32);
-    //
-    //}
   }
 
 }

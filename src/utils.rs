@@ -1,6 +1,5 @@
 use crate::wasm4::*;
 use lazy_static::lazy_static;
-use core::panic;
 use std::sync::Mutex;
 use std::ops::{Add, Sub, Neg, Mul, Div};
 
@@ -168,6 +167,7 @@ impl Animation {
 // -------------------------------
 // パーティクル
 // -------------------------------
+/*
 const MAX_PARTICLE_VALUE: u8 = 32;
 #[derive(Copy, Clone)]
 pub struct Particle {
@@ -195,7 +195,7 @@ impl Particle {
   }
 
 }
-
+*/
 // -------------------------------
 // テキスト
 // -------------------------------
