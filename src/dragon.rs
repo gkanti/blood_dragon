@@ -156,6 +156,7 @@ impl Dragon {
     if damaged {
       self.hp -= 1;
       self.is_inv = true; // 無敵になる
+      tone(tone_frequency(262, 247), 8, 40, TONE_NOISE);
     }
   }
 
@@ -196,7 +197,10 @@ impl Dragon {
     let mut bounced = false;
     if let Some(t) = tl { if t.id == TileId::SpringHori { bounced = true } }
     if let Some(t) = bl { if t.id == TileId::SpringHori { bounced = true } }
-    if bounced { self.force.x = SPRING_FORCE_X }
+    if bounced {
+      tone(tone_frequency(698, 1047), 10, 30, TONE_PULSE2);
+      self.force.x = SPRING_FORCE_X
+    }
 
     // 右移動時
     // ダメージ判定
@@ -214,7 +218,10 @@ impl Dragon {
     let mut bounced = false;
     if let Some(t) = tr { if t.id == TileId::SpringHori { bounced = true } }
     if let Some(t) = br { if t.id == TileId::SpringHori { bounced = true } }
-    if bounced { self.force.x = -SPRING_FORCE_X }
+    if bounced {
+      tone(tone_frequency(698, 1047), 10, 30, TONE_PULSE2);
+      self.force.x = -SPRING_FORCE_X
+    }
   }
 
   // Y軸の衝突処理
@@ -226,7 +233,10 @@ impl Dragon {
     let mut bounced = false;
     if let Some(t) = bl { if t.id == TileId::SpringVert { bounced = true } }
     if let Some(t) = br { if t.id == TileId::SpringVert { bounced = true } }
-    if bounced { self.force.y = -SPRING_FORCE_Y }
+    if bounced {
+      self.force.y = -SPRING_FORCE_Y;
+      tone(tone_frequency(698, 1047), 10, 30, TONE_PULSE2);
+    }
 
     if is_solid_tile(bl) || is_solid_tile(br) {
       // 壁判定
@@ -264,7 +274,10 @@ impl Dragon {
     let mut bounced = false;
     if let Some(t) = tl { if t.id == TileId::SpringVert { bounced = true } }
     if let Some(t) = tr { if t.id == TileId::SpringVert { bounced = true } }
-    if bounced { self.force.y = SPRING_FORCE_Y }
+    if bounced {
+      tone(tone_frequency(698, 1047), 10, 30, TONE_PULSE2);
+      self.force.y = SPRING_FORCE_Y
+    }
 
   }
 
@@ -313,6 +326,7 @@ impl Dragon {
     // 入力を取得
     if self.is_operable {
       if is_just_pressed(BTN_Z) && self.on_ground {
+        tone(tone_frequency(262, 523), 20, 50, TONE_TRIANGLE);
         self.vel.y = JUMP_POWER;
         self.is_jump = true;
         self.on_ground = false; }

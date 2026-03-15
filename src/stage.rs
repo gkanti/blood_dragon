@@ -142,10 +142,6 @@ impl StageHandler {
     self.goal_tile_idx = self.tiles.iter().position(|t| t.id == TileId::GoalClosed).unwrap();
   }
 
-  fn get_idx_from_tile_pos(&self, x: u8, y: u8) -> usize {
-    return self.now_stage.width as usize * y as usize + x as usize;
-  }
-
   fn get_idx_from_pos(&self, x: i16, y: i16) -> i16 {
     let ix = x / STAGE_TILE_SIZE as i16;
     let iy = y / STAGE_TILE_SIZE as i16;
@@ -156,35 +152,23 @@ impl StageHandler {
   }
 
   fn get_tile_from_tile_pos(&mut self, x: u8, y: u8) -> &mut Tile {
-    let idx = self.get_idx_from_tile_pos(x, y);
+    let idx = self.now_stage.width as usize * y as usize + x as usize;;
     return &mut self.tiles[idx as usize];
   }
 
-  fn accept_cmd(&mut self, cmd: InteractiveCmd) {
-    match cmd {
-      InteractiveCmd::GetKey(x, y) => {
-        let tile = self.get_tile_from_tile_pos(x, y);
-        if tile.id != TileId::Empty {
-          tile.id = TileId::Empty;
-          self.tiles[self.goal_tile_idx].id = TileId::GoalOpened;
-        }
-      }
-      InteractiveCmd::GetFragment(x, y) => {
-        let tile = self.get_tile_from_tile_pos(x, y);
-        if tile.id != TileId::Empty {
-          tile.id = TileId::Empty;
-        }
-      }
-      _ => {}
+  pub fn get_key(&mut self, x: u8, y: u8) {
+    let tile = self.get_tile_from_tile_pos(x, y);
+    if tile.id != TileId::Empty {
+      tile.id = TileId::Empty;
+      self.tiles[self.goal_tile_idx].id = TileId::GoalOpened;
     }
   }
 
-  pub fn update(&mut self, cmds: [InteractiveCmd; 4]) {
-    self.accept_cmd(cmds[0]);
-    self.accept_cmd(cmds[1]);
-    self.accept_cmd(cmds[2]);
-    self.accept_cmd(cmds[3]);
-
+  pub fn get_frag(&mut self, x: u8, y: u8) {
+    let tile = self.get_tile_from_tile_pos(x, y);
+    if tile.id != TileId::Empty {
+      tile.id = TileId::Empty;
+    }
   }
 
   pub fn goto_next_stage(&mut self, id: StageID) {
@@ -369,12 +353,12 @@ const STAGE_3: [u8; STAGE_3_WIDTH as usize*STAGE_3_HEIGHT as usize] = [
   b'#',b'>',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b'<',b'#',
   b'#',b'>',b' ',b' ',b' ',b' ',b' ',b' ',b'Z',b'Z',b'#',b'#',
   b'#',b'>',b' ',b' ',b' ',b' ',b'#',b'#',b'#',b'#',b'#',b'#',
-  b'#',b'>',b' ',b' ',b' ',b' ',b' ',b' ',b'k',b' ',b'<',b'#',
+  b'#',b'>',b' ',b' ',b' ',b' ',b' ',b'k',b' ',b' ',b'<',b'#',
   b'#',b'>',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b'<',b'#',
   b'#',b'>',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b'<',b'#',
   b'#',b'>',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b'<',b'#',
   b'#',b'>',b'Z',b'Z',b' ',b' ',b' ',b' ',b' ',b' ',b'<',b'#',
-  b'#',b'>',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b'<',b'#',
+  b'#',b'#',b'#',b'#',b' ',b' ',b' ',b' ',b' ',b' ',b'<',b'#',
   b'#',b'>',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b'<',b'#',
   b'#',b'>',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b'<',b'#',
   b'#',b'>',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b' ',b'<',b'#',

@@ -1,5 +1,6 @@
 use crate::wasm4::*;
 use lazy_static::lazy_static;
+use core::panic;
 use std::sync::Mutex;
 use std::ops::{Add, Sub, Neg, Mul, Div};
 
@@ -390,3 +391,178 @@ impl<T: 'static, const N: usize> TimeLine<T, N> {
     }
   }
 }
+
+// -------------------------------
+// 音楽系
+// -------------------------------
+
+pub fn tone_frequency(freq1: u32, freq2: u32) -> u32 { freq1 | (freq2 << 16) }
+pub fn tone_duration(attack: u32, decay: u32, sustain: u32, release: u32) -> u32 { (attack << 24) | (decay << 16) | sustain | (release << 8) }
+pub fn tone_volume(peak: u32, volume: u32) -> u32 { (peak << 8) | volume }
+pub fn tone_flags(channel: u32, mode: u32, pan: u32) -> u32 { channel | (mode << 2) | (pan << 4) }
+/* 
+fn to_u16(bytes: &[u8]) -> Option<u16> {
+  let mut result: u16 = 0;
+  for b in bytes {
+    if !b.is_ascii_digit() { return None; }
+    result = result * 10 + (b - b'0') as u16; 
+  }
+  return Some(result);
+}
+
+fn is_note(byte: u8) -> bool {
+  matches!(byte, b'a'..=b'g' | b'r')
+}
+
+fn remove_spaces(ascii: &str) -> String {
+  let mut result = String::with_capacity(ascii.len());
+
+  for b in ascii.bytes() {
+    if b != b' ' { result.push(b as char); }
+  }
+  return result;
+}
+pub enum MMLCmd {
+  C(u8),          // c duration: u8(上位2bitを付点として扱う)
+  D(u8),          // d duration: u8(上位2bitを付点として扱う)
+  E(u8),          // e duration: u8(上位2bitを付点として扱う)
+  F(u8),          // f duration: u8(上位2bitを付点として扱う)
+  G(u8),          // g duration: u8(上位2bitを付点として扱う)
+  A(u8),          // a duration: u8(上位2bitを付点として扱う)
+  B(u8),          // b duration: u8(上位2bitを付点として扱う)
+  Channel(u8),    // @ channel: u8(1~4)
+  Portamento,     // &
+  Manual(u8),     // N frequency: u8
+  PanLeft,        // <
+  PanRight,       // >
+  Sharp,          // +
+  Flat,           // -
+  Rest,           // R1,2,4,8,16,32,64(., ..)
+  Duration,       // C1,2,4,8,16,32,64(., ..)
+  OctaveUp,       // /
+  OctaveDown,     // \
+  Volume,         // V100
+  Attack,         // a100
+  Decay,          // d100
+  Release,        // r100
+  Comment,        // ;, 空白, |
+}
+
+enum MMLErrCode {
+
+}
+pub struct Note {
+  cmd: MMLCmd,
+}
+impl Note {
+  pub fn new(cmd: MMLCmd) -> Self {
+    Self { cmd, }
+  }
+}
+
+pub struct StrStream {
+  data: &'static [u8],
+  idx: usize,
+  max_idx: usize,
+  is_end: bool,
+}
+
+impl StrStream {
+  pub fn new(data: &'static str) -> Self {
+    Self { data: data.as_bytes(), idx: 0, max_idx: data.len(), is_end: false }
+  }
+  fn remove_spaces(&mut self) {
+
+  }
+  pub fn read(&mut self) -> Option<u8> {
+    if self.is_end { return None; }
+  
+    if self.idx >= self.max_idx { self.is_end = true; return None; }
+
+    let mut result: u8;
+    while self.idx < self.max_idx {
+      result = self.data[self.idx];
+      self.idx += 1;
+      match result {
+        b' ' | b'\n' | b'|' => { continue; }
+        _ => { return Some(result) }
+      }
+    }
+    return None
+
+  }
+  pub fn read_while<P>(&mut self, mut predicate: P) -> Vec<u8>
+    where P: FnMut(u8) -> bool 
+  {
+    let mut result: Vec<u8> = Vec::with_capacity(8);
+    while let Some(d) = self.read() {
+      if predicate(d) { result.push(d); }
+      else            { break; }
+    }
+    return result;
+  }
+}
+
+pub struct MMLPlayer {
+  idx: usize,
+  now_channel: u8,
+  ch1: Vec<Note>,
+  ch2: Vec<Note>,
+  ch3: Vec<Note>,
+  ch4: Vec<Note>,
+}
+
+impl MMLPlayer {
+  pub fn new() -> Self {
+    Self {
+      idx: 0, 
+      now_channel: 0,
+      ch1: Vec::with_capacity(128),
+      ch2: Vec::with_capacity(128),
+      ch3: Vec::with_capacity(128),
+      ch4: Vec::with_capacity(128)
+    }
+  }
+  pub fn read_mml(&mut self, mml: &'static str) {
+    let mut stream = StrStream::new(mml);
+
+    while let Some(cmd) = stream.read() {
+      match cmd {
+        // チャンネル指定
+        b'@' => { self.set_channel(&mut stream); }
+
+        // C
+        b'c' => {
+          let args = stream.read_while(|d| is_note(d));
+          
+
+        }
+        
+        // コメント(改行まで読み飛ばし)
+        b';' => {
+          let raw_comment: &[u8] = &stream.read_while(|d| d != b'\n')[..];
+          //let comment: &str = unsafe { std::str::from_utf8_unchecked(raw_comment) };
+          //trace("comment: ".to_string() + comment);
+        }
+        // エラー
+        _ => { trace("mml syntax error.") }
+      }
+    }
+  }
+  fn set_channel(&mut self, stream: &mut StrStream) {
+    let new_channel = to_u16(&stream.read_while(|b| b.is_ascii_digit()));
+    if let Some(nc) = new_channel {
+      if nc >= 1 && nc <= 4 { self.now_channel = nc as u8; }
+      else { panic!("invalid channel idx. the index must be a value between 1 and 4.") }
+      trace("set channel to ".to_string() + &nc.to_string())
+    }
+    else { panic!("invalid channel idx. the index must be a integer value.") }
+
+  }
+  fn read_args(&mut self, mml: &str) {
+    self.idx += 1;
+    let mut length: usize = 1;
+
+  }
+}
+*/

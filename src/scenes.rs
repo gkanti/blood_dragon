@@ -1,3 +1,4 @@
+use crate::assets::img::IMG_DRAGON_PRISON;
 use crate::assets::img::IMG_ENDING_PHOTO_01;
 use crate::assets::img::IMG_ICON_FRAGMENT;
 use crate::assets::img::IMG_ITEM_FRAGMENT;
@@ -120,25 +121,43 @@ trait SceneBehavior {
 // タイトル
 // -------------------------------
 pub struct SceneTitle {
+  dragon: Dragon,
   is_start: bool,
+  frame_count: u16,
 }
 impl SceneTitle {
   pub fn new() -> Self {
-    Self { is_start: false }
+    Self {
+      dragon: Dragon::new(),
+      is_start: false,
+      frame_count: 0,
+    }
   }
 }
 impl SceneBehavior for SceneTitle {
-  fn start(&mut self) {}
+  fn start(&mut self) {
+    self.dragon.pos.y = 80;
+  }
 
   fn update(&mut self) {
     // ボタン押下でスタート
+    self.dragon.evt_walk(1);
+    self.dragon.update();
+    if self.dragon.pos.x >= 180 { self.dragon.pos.x = -60 }
+    self.frame_count += 1;
+    if self.frame_count >= 60 { self.frame_count = 0; }
     if is_just_pressed(BTN_Z) { self.is_start = true; }
   }
 
   fn draw(&mut self) {
+    self.dragon.draw(0, 0);
+    IMG_DRAGON_PRISON.draw(self.dragon.pos.x as i32 + 32, self.dragon.pos.y as i32);
     set_drawcolor_idx(0x04);
     text("blood dragon", 28, 60);
-    text(b"press \x81 to start", 15, 120);
+    if self.frame_count >= 30 {
+      text(b"press \x81 to start", 15, 120);
+    }
+
   }
   fn get_scene_cmd(&self) -> SceneCmd {
     if self.is_start { SceneCmd::Change(SceneId::Main) }
@@ -233,19 +252,25 @@ impl SceneBehavior for SceneMain {
     
     // コマンドの処理
     let mut get_frag = false;
+    let mut get_key = false;
     for i in 0..interactive_cmds.len() {
       match interactive_cmds[i] {
         // かけら取得処理(重複取得を避ける)
-        InteractiveCmd::GetFragment(_, _) => {
-          if !get_frag { self.stage_frag_count += 1; get_frag = true; } 
+        InteractiveCmd::GetFragment(x, y) => {
+          if !get_frag {
+            self.stage_frag_count += 1;
+            get_frag = true;
+            self.stage.get_frag(x, y);
+            tone(tone_frequency(1047, 1568), 20, 50, TONE_TRIANGLE);
+          } 
         }
         // ステージ更新処理
         InteractiveCmd::ClearStage => {
+          if self.is_start_stage { return; } // すでに移行済みならreturn
           // 集めた欠片を集計
           self.total_frag_count += self.stage_frag_count;
           self.stage_frag_count = 0;
-          // ステージ移行処理
-          if self.is_start_stage { return; } // すでに移行済みならreturn
+
           match self.now_stage_id {
             StageID::Stage1 | StageID::Stage2 | StageID::Stage3 => {
               match self.now_stage_id {
@@ -264,12 +289,20 @@ impl SceneBehavior for SceneMain {
             _ => return,
           }
         }
+        // 
+        InteractiveCmd::GetKey(x, y) => {
+          if !get_key {
+            get_key = true;
+            self.stage.get_key(x, y);
+            tone(tone_frequency(1047, 1568), 20, 50, TONE_TRIANGLE);
+          }
+
+        }
         _ => { }
       }
     }
 
     // 更新処理
-    self.stage.update(interactive_cmds);
     self.dragon.update();
   }
 
@@ -480,13 +513,7 @@ impl SceneBehavior for SceneTrueEnding {
     if self.timeline_dragon.is_end { self.is_end_event = true; }
     if self.timeline_frag.is_end && !self.is_opened_door {
       self.is_opened_door = true;
-      let imitation_cmd = [
-        InteractiveCmd::GetKey(0, 0),
-        InteractiveCmd::None,
-        InteractiveCmd::None,
-        InteractiveCmd::None
-      ];
-      self.stage.update(imitation_cmd)
+      self.stage.get_key(0, 0);
     }
 
     self.dragon.update();
